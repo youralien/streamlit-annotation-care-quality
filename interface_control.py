@@ -28,9 +28,9 @@ def update_global_dict(keys, dump=False):
 
     if "logged_in" in st.session_state and st.session_state["logged_in"]:
         if save_on_cloud:
-            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE_FILENAME_PREFIX}_{st.session_state['logged_in']}.json", global_dict)
+            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE_FILENAME_PREFIX}_{st.session_state['logged_in']}.json", dict(global_dict))
         else:
-            json.dump(global_dict, open(f"data/{STATE_FILENAME_PREFIX}_{st.session_state['logged_in']}.json", 'w'))
+            json.dump(dict(global_dict), open(f"data/{STATE_FILENAME_PREFIX}_{st.session_state['logged_in']}.json", 'w'))
     elif "pid" in st.session_state and st.session_state["pid"]:
         if save_on_cloud:
             client = get_gc_client()
@@ -41,14 +41,14 @@ def update_global_dict(keys, dump=False):
             if os.path.exists(f"data/{STATE_FILENAME_PREFIX}_{st.session_state['pid']}.json"):
                 return
         if save_on_cloud:
-            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE_FILENAME_PREFIX}_{st.session_state['pid']}.json", global_dict)
+            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE_FILENAME_PREFIX}_{st.session_state['pid']}.json", dict(global_dict))
         else:
-            json.dump(global_dict, open(f"data/{STATE_FILENAME_PREFIX}_{st.session_state['pid']}.json", 'w'))
+            json.dump(dict(global_dict), open(f"data/{STATE_FILENAME_PREFIX}_{st.session_state['pid']}.json", 'w'))
     else:
         if save_on_cloud:
-            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE_FILENAME_PREFIX}.json", global_dict)
+            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE_FILENAME_PREFIX}.json", dict(global_dict))
         else:
-            json.dump(global_dict, open(f'data/{STATE_FILENAME_PREFIX}.json', 'w'))
+            json.dump(dict(global_dict), open(f'data/{STATE_FILENAME_PREFIX}.json', 'w'))
 
 
 def example_finished_callback():
@@ -64,12 +64,12 @@ def example_finished_callback():
     # Save the state
     if "logged_in" in st.session_state and st.session_state["logged_in"]:
         if save_on_cloud:
-            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE_FILENAME_PREFIX}_{st.session_state['logged_in']}.json", global_dict) 
+            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE_FILENAME_PREFIX}_{st.session_state['logged_in']}.json", dict(global_dict))
         else:
             json.dump(dict(global_dict), open(f"data/{STATE_FILENAME_PREFIX}_{st.session_state['logged_in']}.json", 'w'))
     else:
         if save_on_cloud:
-            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE_FILENAME_PREFIX}.json", global_dict)
+            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE_FILENAME_PREFIX}.json", dict(global_dict))
         else:
             json.dump(dict(global_dict), open(f'data/{STATE_FILENAME_PREFIX}.json', 'w'))
     st.session_state["reload"] = True
@@ -135,28 +135,28 @@ def update_bad_areas_reason():
     update_global_dict([], dump=True)
 
 if __name__ == "__main__":
-    st.write("""
-    <style>
-        div.row-widget.stRadio > div {
-            flex-direction: row;
-            justify-content: center;
-        }
-        div.st-bf {
-            flex-direction: column;
-        }
-        div.st-ag {
-            font-weight: bold;
-            padding-left: 2px;
-        }
-        .border-box {
-            border: 1px solid #d3d3d3;
-            border-radius: 5px;
-            padding: 10px;
-            margin-bottom: 15px;
-            background-color: #222021;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    # st.write("""
+    # <style>
+    #     div.row-widget.stRadio > div {
+    #         flex-direction: row;
+    #         justify-content: center;
+    #     }
+    #     div.st-bf {
+    #         flex-direction: column;
+    #     }
+    #     div.st-ag {
+    #         font-weight: bold;
+    #         padding-left: 2px;
+    #     }
+    #     .border-box {
+    #         border: 1px solid #d3d3d3;
+    #         border-radius: 5px;
+    #         padding: 10px;
+    #         margin-bottom: 15px;
+    #         background-color: #222021;
+    #     }
+    # </style>
+    # """, unsafe_allow_html=True)
 
     if "reload" not in st.session_state or st.session_state["reload"]:
         if "logged_in" in st.session_state and st.session_state["logged_in"]:
@@ -226,7 +226,6 @@ if __name__ == "__main__":
                     <p>Instructions: Below is a <span style="color:#1E90FF;">conversation context</span> for psychotherapy conversation.
                     We will analyze the helper response in <span style="color:#FF4500;">red</span>. 
                     Your task is to read through the conversation to identify the strengths and bad areas of the <span style="color:#FF4500;">response</span>.</p>
-                    <p><a href="https://docs.google.com/document/d/1rg3FjczuUtn-_mRqJdQpv7HKauAxvFQD1uIMlKd0-bI/edit?usp=sharing" target="_blank">Click here to see the Annotation Manual</a></p>
                     <p>Disclaimer: The conversations might contain grammatical or structural errors. Please ignore them when annotating.</p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -250,7 +249,8 @@ if __name__ == "__main__":
                     st.header("Evaluate Helper Response")
                     st.markdown("""
                         <div class="border-box">
-                        Questions below assess the different aspects of the last response.
+                        Questions below assess the different aspects of the last response. 
+                        <a href="https://docs.google.com/document/d/1rg3FjczuUtn-_mRqJdQpv7HKauAxvFQD1uIMlKd0-bI/edit?usp=sharing" target="_blank">Click Here to see the ANNOTATION MANUAL</a>
                         </div>
                     """, unsafe_allow_html=True)
 
