@@ -254,7 +254,7 @@ if __name__ == "__main__":
                         </div>
                     """, unsafe_allow_html=True)
 
-                    skill_options = ["Reflections", "Validation", "Empathy", "Questions", "Suggestions", "Self-disclosure", "Structure", "Professionalism"]
+                    skill_options = ["Reflections", "Validation", "Empathy", "Questions", "Suggestions", "Self-disclosure", "Session Management", "Professionalism"]
                     st.subheader("For the response, select the :green[strengths]")
                     selected_strengths = st.multiselect(
                         "Select strengths:", options=skill_options, key=f"strengths_{example_ind}", on_change=update_strengths
@@ -266,10 +266,20 @@ if __name__ == "__main__":
                     )
 
                     st.subheader("Provide more details for selected bad areas")
+                    options_per_area = {
+                        "Reflections": ["Reflections should have been used here, but weren't", "Reflections were used, but could have been done better", "Reflections were not appropriate here"],
+                        "Validation": ["Validation should have been used here, but wasn't", "Validation was used, but could have been done better", "Validation was not appropriate here"],
+                        "Questions": ["Questions should have been used here, but weren't", "Questions were used, but could have been phrased better", "Questions were not appropriate here"],
+                        "Empathy": ["Empathy should have been used here, but wasn't", "Empathy was used, but could have been done better", "Empathy was not appropriate here"],
+                        "Suggestions": ["Suggestions should have been used here, but weren't", "Suggestions were used, but could have been done better", "Suggestions were not appropriate here"],
+                        "Self-disclosure": ["Self-disclosure should have been used here, but wasn't", "Self-disclosure was used, but could have been done better", "Self-disclosure was not appropriate here"],
+                        "Session Management": ["Session Management should have been used here, but wasn't", "Session Management was used, but could have been done better", "Session Management was not appropriate here"],
+                        "Professionalism": ["Professional Tone should have been used here, but wasn't", "Professional Tone was used, but could have been done better", "Professional Tone was not appropriate here"]
+                    }
                     for area in selected_bad_areas:
                         detail_key = f"detail_{example_ind}_{area}"
-                        st.selectbox(f"Select the reason for {area} being a bad area:",
-                            options=["The skill was attempted but executed poorly", "The skill was not used, but should have been", "The skill should not have been used here"],
+                        st.radio(f"Select the reason for {area} being a bad area:",
+                            options=["Reason NOT YET selected (choose from below)"] + options_per_area[area],
                             key=detail_key,
                             on_change=update_bad_areas_reason
                             )
