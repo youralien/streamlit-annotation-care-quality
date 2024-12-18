@@ -270,7 +270,7 @@ if __name__ == "__main__":
                         detail_key = f"detail_{example_ind}_{area}"
                         st.selectbox(
                             f"Select the reason for {area} being a bad area:",
-                            options=["Did not use at all", "Used inappropriately", "Should not use"],
+                            options=["The skill was attempted but executed poorly", "The skill was not used, but should have been", "The skill should not have been used here"],
                             key=detail_key,
                             on_change=update_bad_areas_reason
                             )

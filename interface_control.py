@@ -268,9 +268,8 @@ if __name__ == "__main__":
                     st.subheader("Provide more details for selected bad areas")
                     for area in selected_bad_areas:
                         detail_key = f"detail_{example_ind}_{area}"
-                        st.selectbox(
-                            f"Select the reason for {area} being a bad area:",
-                            options=["Did not use at all", "Used inappropriately", "Should not use"],
+                        st.selectbox(f"Select the reason for {area} being a bad area:",
+                            options=["The skill was attempted but executed poorly", "The skill was not used, but should have been", "The skill should not have been used here"],
                             key=detail_key,
                             on_change=update_bad_areas_reason
                             )
