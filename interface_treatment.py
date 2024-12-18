@@ -222,10 +222,11 @@ if __name__ == "__main__":
 
                 st.header(f"Conversation {st.session_state['current_conversation_number']}")
                 st.markdown("""
-                    <div class="border-box">
-                    <p>Instructions: Below is a <span style="color:#1E90FF;">conversation context</span> for psychotherapy conversation. 
+                     <div class="border-box">
+                    <p>Instructions: Below is a <span style="color:#1E90FF;">conversation context</span> for psychotherapy conversation.
                     We will analyze the helper response in <span style="color:#FF4500;">red</span>. 
                     Your task is to read through the conversation to identify the strengths and bad areas of the <span style="color:#FF4500;">response</span>.</p>
+                    <p><a href="https://docs.google.com/document/d/1rg3FjczuUtn-_mRqJdQpv7HKauAxvFQD1uIMlKd0-bI/edit?usp=sharing" target="_blank">Click here to see the Annotation Manual</a></p>
                     <p>Disclaimer: The conversations might contain grammatical or structural errors. Please ignore them when annotating.</p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -249,11 +250,11 @@ if __name__ == "__main__":
                     st.header("Evaluate Helper Response")
                     st.markdown("""
                         <div class="border-box">
-                        Questions below assess the different aspects of the flawed response.
+                        Questions below assess the different aspects of the last response.
                         </div>
                     """, unsafe_allow_html=True)
 
-                    skill_options = ["Empathy", "Questions", "Suggestions", "Validation", "Structure", "Reflection", "Professionalism"]
+                    skill_options = ["Reflections", "Validation", "Empathy", "Questions", "Suggestions", "Self-disclosure", "Structure", "Professionalism"]
                     st.subheader("For the response, select the :green[strengths]")
                     selected_strengths = st.multiselect(
                         "Select strengths:", options=skill_options, key=f"strengths_{example_ind}", on_change=update_strengths
