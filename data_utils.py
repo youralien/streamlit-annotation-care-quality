@@ -6,10 +6,24 @@ import json
 def get_gc_client():
     return storage.Client.from_service_account_info(st.secrets.googlecloud)
 
-def save_dict_to_gcs(bucket_name, blob_name, data):
-    # Convert Python dictionary to JSON string
-    json_str = json.dumps(data)
+# Define a function to serialize the session state
+def serialize_session_state(session_state):
+    # Extract the dictionary from the SessionState object
+    serializable_state = {key: value for key, value in session_state.items() if is_json_serializable(value)}
+    return json.dumps(serializable_state)
 
+# Helper function to check if a value is JSON serializable
+def is_json_serializable(value):
+    try:
+        json.dumps(value)
+        return True
+    except TypeError:
+        return False
+
+def save_dict_to_gcs(bucket_name, blob_name, data):
+    # Convert python dict or SessionStateProxy to JSON string
+    json_str = serialize_session_state(data)
+    
     # Initialize GCS client
     client = get_gc_client()
     bucket = client.get_bucket(bucket_name)

@@ -1,62 +1,76 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import json
 from data_utils import *
 import os
 
 BUCKET_NAME = st.secrets.filenames["bucket_name"]
-STATE = st.secrets.filenames["state_file"]
-EXAMPLES = st.secrets.filenames["example_file"]
 
-# whether to use /data in local directory or GCS
-USE_LOCAL_DATA = True
+st.set_page_config(layout="wide")
 
+# Change it to True when you want to store on Google Cloud
+save_on_cloud = False
+
+# st.markdown(
+#     """
+#     <style>
+#     .stApp { 
+#         background-color: #A6D8B5
+#     }
+#     </style>
+#     """,
+#     unsafe_allow_html=True
+# )
+
+# Updates the global dictionary
 def update_global_dict(keys, dump = False):
     for key in keys:
-        if key in st.session_state:
-            global_dict[key] = st.session_state[key]
+        global_dict[key] = st.session_state[key]
 
     if not dump:
         return
 
     if "logged_in" in st.session_state and st.session_state["logged_in"]:
-        if USE_LOCAL_DATA:
-            json.dump(global_dict, open(f"data/state_{st.session_state['logged_in']}.json", 'w'))
+        if save_on_cloud:
+            save_dict_to_gcs(BUCKET_NAME, f"data/state_eval_{st.session_state['logged_in']}.json", global_dict)
         else:
-            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE}_{st.session_state['logged_in']}.json", global_dict)
+            json.dump(global_dict, open(f"data/state_eval_{st.session_state['logged_in']}.json", 'w'))
     elif "pid" in st.session_state and st.session_state["pid"]:
-        if USE_LOCAL_DATA:
-            if os.path.exists(f"data/state_{st.session_state['pid']}.json"):
-                return
-            else:
-                json.dump(global_dict, open(f"data/state_{st.session_state['pid']}.json", 'w'))
-        else:
+        if save_on_cloud:
             client = get_gc_client()
             bucket = client.get_bucket(BUCKET_NAME)
-            if storage.Blob(bucket=bucket, name=f"data/{STATE}_{st.session_state['pid']}.json").exists(client):
+            if storage.Blob(bucket=bucket, name=f"data/state_eval_{st.session_state['pid']}.json").exists(client):
+                return
+        else:
+            if os.path.exists(f"data/state_eval_{st.session_state['pid']}.json"):
                 # load
                 return
-            else:
-                save_dict_to_gcs(BUCKET_NAME, f"data/{STATE}_{st.session_state['pid']}.json", global_dict)
-    else:
-        if USE_LOCAL_DATA:
-            json.dump(global_dict, open(f'data/state.json', 'w'))
+        if save_on_cloud:
+            save_dict_to_gcs(BUCKET_NAME, f"data/state_eval_{st.session_state['pid']}.json", global_dict)
         else:
-            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE}.json", global_dict)
+            json.dump(global_dict, open(f"data/state_eval_{st.session_state['pid']}.json", 'w'))
+    else:
+        if save_on_cloud:
+            save_dict_to_gcs(BUCKET_NAME, f"data/state_eval.json", global_dict)
+        else:
+            json.dump(global_dict, open(f'data/state_eval.json', 'w'))
 
 def example_finished_callback():
     for _ in st.session_state:
         global_dict[_] = st.session_state[_]
     global_dict["current_example_ind"] += 1
+
     if "logged_in" in st.session_state and st.session_state["logged_in"]:
-        if USE_LOCAL_DATA:
-            json.dump(global_dict, open(f"data/state_{st.session_state['logged_in']}.json", 'w'))
+        if save_on_cloud:
+            save_dict_to_gcs(BUCKET_NAME, f"data/state_eval_{st.session_state['logged_in']}.json", global_dict) 
         else:
-            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE}_{st.session_state['logged_in']}.json", dict(global_dict))
+            json.dump(dict(global_dict), open(f"data/state_eval_{st.session_state['logged_in']}.json", 'w'))
     else:
-        if USE_LOCAL_DATA:
-            json.dump(global_dict, open(f'data/state.json', 'w'))
+        if save_on_cloud:
+            save_dict_to_gcs(BUCKET_NAME, f"data/state_eval.json", global_dict)
         else:
-            save_dict_to_gcs(BUCKET_NAME, f"data/{STATE}.json", dict(global_dict))
+            json.dump(dict(global_dict), open(f'data/state_eval.json', 'w'))
+    st.session_state["reload"] = True
     js = '''
     <script>
         function scrollToTop() {
@@ -66,235 +80,174 @@ def example_finished_callback():
         setTimeout(scrollToTop, 300);  // 300 milliseconds delay
     </script>
     '''
-    with callback_placeholder.container():
-        st.components.v1.html(js)
+    # st.markdown(js, unsafe_allow_html=True)
+    components.html(js)
 
 
-
+# Function takes in the unique user login and consent
 def get_id():
     """Document Prolific ID"""
 
     if "logged_in" in st.session_state and st.session_state["logged_in"]:
         return True
 
-    with login_placeholder.container():
-        col1, col2, col3 = st.columns([2,3,2])
-        with col2:
-            if "pid" in st.session_state and st.session_state["pid"]:
-                st.session_state["logged_in"] = st.session_state["pid"]
-                st.session_state["reload"] = True
-                return True
-            else:
-                st.markdown(f'### Virtual Patient Response Ranking Tool - Test Set C')
-                st.warning("""Before you log in and begin annotating data,
-                            please ensure you have read and fully understood our research information sheet.
-                            :red[**By providing your Email ID, you are providing your informed consent**] to participate in this research project.
-                            If you have any questions or concerns about the research or your role in it,
-                            please reach out to our team before proceeding.""", icon="⚠️")
-                st.text_input("Email ID", key="pid", on_change=update_global_dict, args=[["pid"], "True"])
-                st.session_state["reload"] = True
-                return False
+    col1, col2, col3 = st.columns([2,3,2])
+    with col2:
+        # Checks if the id is in session, if true it marks the user as logged in
+        if "pid" in st.session_state and st.session_state["pid"]:
+            st.session_state["logged_in"] = st.session_state["pid"]
+            st.session_state["reload"] = True
+            return True
+        # Otherwise asks the user to enter user login
+        else:
+            st.markdown(f'## Annotation Interface')
+            st.warning("""Before you log in and begin annotating data,
+                        please ensure you have read and fully understood our research information sheet.
+                        :red[**By providing your Email ID, you are providing your informed consent**] to
+                       participate in this research project. Please note that this study may contain
+                       conversations related to distressing topics. If you have any questions or 
+                       concerns about the research or your role in it, please reach out to our team before proceeding.""", icon="⚠️")
+            st.text_input("Email ID", key="pid", on_change=update_global_dict, args=[["pid"], "True"])
+            st.session_state["reload"] = True
+            return False
 
 
 if __name__ == "__main__":
 
-    st.set_page_config(layout="wide")
+    # st.set_page_config(layout="wide")
 
-    # Create placeholders for each dynamic section
-    login_placeholder = st.empty()
-    main_content_placeholder = st.empty()
-    main_instructions_placeholder = st.empty()
-    case_input_placeholder = st.empty()
-    dimension_1_placeholder = st.empty()
-    dimension_2_placeholder = st.empty()
-    dimension_3_placeholder = st.empty()
-    overall_ranking_placeholder = st.empty()
-    prepare_submit_placeholder = st.empty()
-    callback_placeholder = st.empty()
+    # global styles for horizontal radio buttons
+    st.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center;} </style>', unsafe_allow_html=True)
+    st.write('<style>div.st-bf{flex-direction:column;} div.st-ag{font-weight:bold;padding-left:2px;}</style>', unsafe_allow_html=True)
 
     if "reload" not in st.session_state or st.session_state["reload"]:
         if "logged_in" in st.session_state and st.session_state["logged_in"]:
-            if USE_LOCAL_DATA:
-                global_dict = json.load(open(f"data/{STATE}_{st.session_state['logged_in']}.json", 'r'))
+            if save_on_cloud:
+                global_dict = read_or_create_json_from_gcs(BUCKET_NAME, f"data/state_eval_{st.session_state['logged_in']}.json")
             else:
-                global_dict = read_or_create_json_from_gcs(BUCKET_NAME, f"data/{STATE}_{st.session_state['logged_in']}.json")
+                global_dict = json.load(open(f"data/state_eval_{st.session_state['logged_in']}.json", 'r'))
         elif "pid" in st.session_state and st.session_state["pid"]:
-            if USE_LOCAL_DATA:
-                global_dict = json.load(open(f"data/{STATE}_{st.session_state['pid']}.json", 'r'))
+            if save_on_cloud:
+                global_dict = read_or_create_json_from_gcs(BUCKET_NAME, f"data/state_eval_{st.session_state['pid']}.json")
             else:
-                global_dict = read_or_create_json_from_gcs(BUCKET_NAME, f"data/{STATE}_{st.session_state['pid']}.json")
+                global_dict = json.load(open(f"data/state_eval_{st.session_state['pid']}.json", 'r'))
         else:
-            if USE_LOCAL_DATA:
-                global_dict = json.load(open(f'data/{STATE}.json', 'r'))
+            if save_on_cloud:
+                global_dict = read_or_create_json_from_gcs(BUCKET_NAME, f"data/state_eval.json")
             else:
-                global_dict = read_or_create_json_from_gcs(BUCKET_NAME, f"data/{STATE}.json")
+                global_dict = json.load(open(f'data/state_eval.json', 'r'))
         st.session_state["reload"] = False
         st.session_state["testcases"] = global_dict["testcases"]
         st.session_state["current_example_ind"] = global_dict["current_example_ind"]
     else:
         global_dict = st.session_state
 
+    
     if "testcases_text" not in st.session_state:
-        if USE_LOCAL_DATA:
-            testcases = json.load(open(f'data/{EXAMPLES}.json', 'r'))
+        if save_on_cloud:
+            testcases = read_or_create_json_from_gcs(BUCKET_NAME, f"processed_dict.json")
+            eval_info = read_or_create_json_from_gcs(BUCKET_NAME, f"data/session_level_definitions.json") 
         else:
-            testcases = read_or_create_json_from_gcs(BUCKET_NAME, f"data/{EXAMPLES}.json")
+            testcases = json.load(open('processed_dict.json', 'r'))
+            eval_info = json.load(open('data/session_level_definitions.json', 'r'))
         st.session_state["testcases_text"] = testcases
+        st.session_state["eval_text"] = eval_info
+
+    # print_dict = {}
+    # for _ in st.session_state:
+    #     if _ != "testcases_text":
+    #         print_dict[_] = st.session_state[_]
+    # print(print_dict)
 
     testcases = st.session_state["testcases_text"]
+    eval_info = st.session_state["eval_text"]
 
     if get_id():
-        with main_content_placeholder.container():
-            example_ind = global_dict["current_example_ind"]
 
-            with st.sidebar:
-                st.markdown(""" # **Annotation Instructions**
-**Case Data**: You have been provided a description of the patient case, and a conversation between the virtual patient and a therapist.
+        example_ind = global_dict["current_example_ind"]
 
-**Annotation Tips:**
-Rank the patient responses shown based on the set of dimensions provided, from 1 (best) to 5 (worst).
-The same rank can be assigned to multiple responses, if required. For example, if the first and second response are of similar quality, and both are better than the third response, the ranking would look like
 
-| Response  | Rank |
-| --------- | ---- |
-| ResponseX | 1    |
-| ResponseY | 1    |
-| ResponseZ | 2    |
-""")
+# - You have been provided a conversation between a simulated client and a simulated therapist, along with the change goal of the simulated client.
+# - Please rate the simulated client in each conversation for realism along the 3 dimensions provided, while following the given instructions. :grey[**A more realistic conversation is assigned a higher score for all of the dimension.**]
+# - Please also rate the simulated therapist in these conversations on the 4 dimensions provided, following the accompanying instructions.
+# """)
 
-            c1, c2, c3 = st.columns([1,5,1])
-            with c2:
-                if example_ind >= len(global_dict["testcases"]):
-                    st.title("Thank you!")
-                    st.balloons()
-                    st.success("You have annotated all the examples! 🎉")
+        c1, c2 = st.columns(2)
+        for key in global_dict:
+            st.session_state[key] = global_dict[key]
 
-                else:
+        testcase = testcases[global_dict["testcases"][example_ind]]
 
-                    for key in global_dict:
-                        st.session_state[key] = global_dict[key]
+        count_required_feedback = 0
+        count_done_feedback = 0
+        # for t in range(len(testcases)):
+        with c1.container(height=1000):
+            if example_ind >= len(global_dict["testcases"]):
+                st.title("Thank you!")
+                st.balloons()
+                st.success("You have annotated all the examples! 🎉")
+            else:
+                # st.markdown(testcases[t])
+                c_index = testcase['conv_index']
+                h_index = testcase['helper_index']
+                st.header(f"Case {c_index}, Helper {h_index}")
+                st.markdown(f"""Instructions: Below is a :blue[conversation context] for conversation {c_index}. 
+                            The helper response in red has been identified as a flawed response. 
+                            You are also given a better response and feedback. 
+                            Your task is to read throuhgh the conversation, :green[better response] and 
+                            :green[feedback] to identify the areas in the :red[helper response] that need improvement in the response.""")
+                
 
-                    with main_instructions_placeholder.container():
-                        st.markdown(f'### **Virtual Patient Response Ranking Tool - Test Set C**')
-                        st.info("This is a tool to rank patient responses generated from different AI models along different dimensions. Please read the conversation, patient description and set of principles for the patient to follow below and provide responses in the following sections.")
-                        st.subheader(f"Case {example_ind + 1} of {len(global_dict['testcases'])}")
+                conv = testcase["input"]
+                better_response = testcase["response"]["alternative"]
+                feedback = testcase["response"]["feedback"]
+                st.markdown(f'### **Conversation History**')
+                for i in range(len(conv) - 1):
+                    st.markdown(f':blue[{conv[i]}]')
+                st.markdown(f':red[{conv[-1]}]')
+                st.subheader("Better Response and Feedback")
+                st.write(f":green[Better Response: {better_response}]")
+                st.write(f":green[Feedback: {feedback}]")
+                    
+        with c2.container(height=1000):
+            if example_ind >= len(global_dict["testcases"]):
+                st.title("Thank you!")
+                st.balloons()
+                st.success("You have annotated all the examples! 🎉")
 
-                    example_ind = global_dict["current_example_ind"]
-                    testcase = testcases["tests"][global_dict["testcases"][example_ind]]
+            else:
+                with st.container():
+                    st.header("Bad Areas Annotation")
+                    options = ["Is the helper asking questions that are too focused with closed-questions instead of exploring with open-ended questions?", 
+                        "Is the helper not exploring the details of the situation the seeker is coming with?", 
+                        "Is the helper asking questions without a clear intention/goal?", 
+                        "Is the helper not encouraging expression of feelings?", 
+                        "Is the helper turning the attention to other people instead of the seeker when asking questions? (i.e., asking what person X did, instead of asking how the seeker felt about X's behavior)", 
+                        "Is the helper asking questions without empathy?", 
+                        "Is the helper asking lengthy or multiple questions at once?", 
+                        "When asking questions, is the helper trying to cover everything instead of focusing on one aspect?", 
+                        "Is the helper asking questions that question their claims, or come off mistrusting, or asking questions to fact check? (tell me what data you have that supports that”, do you have any evidence that you'd be X if you did Y?)", 
+                        "Is the helper giving too much or premature advice, answers, or solutions? This could be giving suggestions without first understanding the situation to know if it is applicable.", 
+                        "Is the helper telling people what to do, giving direct advice “you should”?", 
+                        "Is the helper imposing beliefs or personal values on seekers? ---whether that is by trying to debate, convince, or just assume. Instead, the helper should allow the seeker to decide for themselves, instead of deciding for them."]
+                    rating_scale = ["Select an option", "Yes", "No", "Not Relevant"]
 
-                    count_required_feedback = 0
-                    count_done_feedback = 0
-
-                    with case_input_placeholder.container():
-                        st.markdown(f'### **Description of Patient**')
-                        st.markdown(testcase["input"]["description"])
-
-                        conv = testcase["input"]["messages"]
-                        st.markdown(f'### **Conversation History**')
-                        for i in range(len(conv)):
-                            to_print = f"**{conv[i]['role']}** : {conv[i]['content']}"
-                            if conv[i]["role"] == 'therapist':
-                                st.markdown(f':blue[{to_print}]')
-                            else:
-                                st.markdown(f':red[{to_print}]')
-
-                        # principles_list = f'### **Principles**'
-                        # for _ in testcase["input"]["principles"]:
-                        #     principles_list += f'\n- {_}'
-                        # st.markdown(principles_list)
-
-                    responses = testcase["responses"]
-                    with dimension_1_placeholder.container():
-                        st.markdown(f'### **Dimension 1**')
-                        st.markdown('Rank responses (1=best, 5=worst) based on how consistent they are to the patient description and conversation history, and if they offer an appropriate reply to the last message from the therapist. All suitably consistent responses should have the same rank.')
-
-                        for idx, response in enumerate(responses):
-                            col1, col2 = st.columns([4,2])
-                            with col1:
-                                to_print = f"**patient** : {response['message']}"
-                                st.markdown(f':red[{to_print}]')
-                                count_required_feedback += 1
-
-                            with col2:
-                                key = f'{example_ind}_1_{idx}'
-                                st.selectbox(label="Rank", options=["None"] + [str(_+1) for _ in list(range(len(responses)))], key=key)
-                                if key in st.session_state and st.session_state[key] != "None":
-                                    count_done_feedback += 1
-
-                    with dimension_2_placeholder.container():
-                        st.markdown(f'### **Dimension 2**')
-                        # st.markdown('The response avoids stylistic errors. Such errors may include: starting a sentence with a greeting in the middle of a conversation, or always ending a response with an abbreviation.')
-                        st.markdown('Evaluate whether each response has an awkward style of speech. An example of awkward style could be starting a sentence with a greeting in the middle of a conversation.')
-
-                        for idx, response in enumerate(responses):
-                            col1, col2 = st.columns([4,2])
-                            with col1:
-                                to_print = f"**patient** : {response['message']}"
-                                st.markdown(f':red[{to_print}]')
-                                count_required_feedback += 1
-
-                            with col2:
-                                key = f'{example_ind}_2_{idx}'
-                                st.selectbox(label="Is this response awkward?", options=["None", "Yes", "No"], key=key)
-                                if key in st.session_state and st.session_state[key] != "None":
-                                    count_done_feedback += 1
-
-                    with dimension_3_placeholder.container():
-                        st.markdown(f'### **Dimension 3**')
-                        st.markdown("""Rank responses (1=best, 5=worst) based on how well they adhere to all the written principles.
-
-* Responses that violate fewer principles should be ranked higher.
-* Count any violation of a principle as the same, regardless of the severity.
-* ⚠️ *Do not* evaluate responses based on *your internal-set of principles*.  Please only evaluate based on principles that are written
-""")
-
-                        principles_list = f'##### **Principles for Patient Actor to Follow**'
-                        for i, principle in enumerate(testcase["input"]["principles"]):
-                            principles_list += f'\n{i+1}. {principle}'
-                        st.markdown(principles_list)
-
-                        for idx, response in enumerate(responses):
-                            col1, col2 = st.columns([4,2])
-                            with col1:
-                                to_print = f"**patient** : {response['message']}"
-                                st.markdown(f':red[{to_print}]')
-                                count_required_feedback += 1
-
-                            with col2:
-                                key = f'{example_ind}_3_{idx}'
-                                st.selectbox(label="Rank", options=["None"] + [str(_+1) for _ in list(range(len(responses)))], key=key)
-                                if key in st.session_state and st.session_state[key] != "None":
-                                    count_done_feedback += 1
-
-                    with overall_ranking_placeholder.container():
-                        st.markdown(f'### **Overall Ranking**')
-                        st.markdown('Based on your answers for the dimensions above, provide an overall ranking (1=best, 5=worst) for the responses in the context of the patient description, conversation history and set of principles. In cases where responses do not have significant errors according to dimensions 1 and 2, the overall ranking can be determined on the basis of dimension 3. ')
-
-                        for idx, response in enumerate(responses):
-                            col1, col2 = st.columns([4,2])
-                            with col1:
-                                to_print = f"**patient** : {response['message']}"
-                                st.markdown(f':red[{to_print}]')
-                                count_required_feedback += 1
-
-                            with col2:
-                                key = f'{example_ind}_4_{idx}'
-                                st.selectbox(label="Rank", options=["None"] + [str(_+1) for _ in list(range(len(responses)))], key=key)
-                                if key in st.session_state and st.session_state[key] != "None":
-                                    count_done_feedback += 1
-
+                    for j, option in enumerate(options):
                         count_required_feedback += 1
-                        st.text_area("Please provide a brief explanation for the overall ranking provided above.", key=f"reason_{example_ind}", height=200)
-                        if f"reason_{example_ind}" in st.session_state and st.session_state[f"reason_{example_ind}"]:
+                        radio_key = f"option_{j}_{example_ind}"
+                        st.write(f"{option}")
+                        default_value = " " if options else "None"
+                        selection = st.radio(" ", rating_scale, index=0, on_change = update_global_dict, args = [[radio_key]], key= radio_key)
+                        if radio_key in st.session_state and st.session_state[radio_key] != "None":
                             count_done_feedback += 1
 
-                    with prepare_submit_placeholder.container():
-                        st.checkbox('I have finished annotating', key=f"finished_{example_ind}")
 
-                        if f"finished_{example_ind}" in st.session_state and st.session_state[f"finished_{example_ind}"]:
-                            if count_done_feedback != count_required_feedback:
-                                st.error('Some annotations seem to be missing. Please annotate the full conversation', icon="❌")
-                            else:
-                                st.success('We got your annotations!', icon="✅")
-                                st.button("Submit final answers and go to next testcase", type="primary", on_click=example_finished_callback)
-                                st.session_state["reload"] = True
+                st.checkbox('I have finished annotating', key=f"finished_{example_ind}", on_change=update_global_dict, args=[[f"finished_{example_ind}"]])
+
+                if f"finished_{example_ind}" in st.session_state and st.session_state[f"finished_{example_ind}"]:
+                    if count_done_feedback != count_required_feedback:
+                        st.error('Some annotations seem to be missing. Please annotate all fields', icon="❌")
+                    else:
+                        st.success('We got your annotations!', icon="✅")
+                        st.button("Submit final answers and go to next testcase", type="primary", on_click=example_finished_callback)
+                        st.session_state["reload"] = True
