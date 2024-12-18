@@ -98,8 +98,8 @@ def get_id():
             return True
         else:
             st.markdown(f'## Annotation Interface')
-            st.warning("""Before you log in and begin annotating data, please ensure you have read and fully understood our research information sheet. :red[**By providing your Prolific ID, you are providing your informed consent**] to participate in this research project. Please note that this study may contain conversations related to distressing topics. If you have any questions or concerns about the research or your role in it, please reach out to our team before proceeding.""", icon="⚠️")
-            st.text_input("Enter your Prolific ID", key="pid", on_change=update_global_dict, args=[["pid"], "True"])
+            st.warning("""Please note that this study may contain conversations related to distressing topics. If you have any questions or concerns about the research goals or your role as an expert annotator, please reach out to our team before proceeding.""", icon="⚠️")
+            st.text_input("Email ID", key="pid", on_change=update_global_dict, args=[["pid"], "True"])
             st.session_state["reload"] = True
             return False
 
