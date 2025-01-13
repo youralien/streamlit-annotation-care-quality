@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "expert_annotation_interface"
+name = "streamlit-annotation-care-quality"
 version = "0.1.0"
 description = ""
 authors = ["Ifdita Hasan <ifditahasan11@gmail.com>"]
