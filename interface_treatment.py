@@ -12,7 +12,7 @@ STATE_FILENAME_PREFIX = "state_treatment_eval"
 LOCAL_TESTCASES_FILENAME = "all_treatment_dialogues.json"
 
 # Change it to True when you want to store on Google Cloud
-save_on_cloud = True
+save_on_cloud = True 
 if save_on_cloud:
     BUCKET_NAME = st.secrets.filenames["bucket_name"]
     DATASET_FILE = st.secrets.filenames["dataset_file"]
@@ -61,6 +61,9 @@ def example_finished_callback():
         # if next_testcase.get("therapist_index", 0) == 0:  # New conversation
         #     st.session_state["current_conversation_number"] += 1
 
+    save_state_and_update_page()
+
+def save_state_and_update_page():
     # Save the state
     if "logged_in" in st.session_state and st.session_state["logged_in"]:
         if save_on_cloud:
@@ -82,7 +85,22 @@ def example_finished_callback():
         setTimeout(scrollToTop, 300);  // 300 milliseconds delay
     </script>
     '''
-    components.html(js)
+    components.html(js, height=0, scrolling=False)
+
+def backbeginning_callback():
+    global_dict["current_example_ind"] = 0
+    global_dict["current_conversation_number"] = 1
+    save_state_and_update_page()
+
+def backprevious_callback():
+    if global_dict["current_example_ind"] > 0:
+        global_dict["current_example_ind"] -= 1
+        previous_example_ind = global_dict["current_example_ind"]
+        previous_testcase = testcases[global_dict["testcases"][previous_example_ind]]
+        if previous_testcase.get("therapist_index", 0) == 0:
+            global_dict["current_conversation_number"] = max(1, global_dict["current_conversation_number"] - 1)
+        save_state_and_update_page()
+
 
 def get_id():
     """Document Prolific ID"""
@@ -216,6 +234,11 @@ if __name__ == "__main__":
             with c1.container():
                 # # if "current_conversation_number" not in st.session_state:
                 # #     st.session_state["current_conversation_number"] = 1
+                backcol1, backcol2 = st.columns(2)
+                with backcol1:
+                    st.button("<<< Back to beginning", on_click=backbeginning_callback)
+                with backcol2:
+                    st.button("< Back one example", on_click=backprevious_callback)
 
                 if testcase.get("therapist_index", 0) == 0 and example_ind != 0:
                     st.session_state["current_conversation_number"] += 1
