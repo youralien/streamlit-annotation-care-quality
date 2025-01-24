@@ -222,6 +222,11 @@ if __name__ == "__main__":
 
         # Check if either the current example index or the conversation number exceeds the limit
         if st.session_state["current_example_ind"] >= len(global_dict["testcases"]):
+            backcol1, backcol2 = st.columns(2)
+            with backcol1:
+                st.button("<<< Back to beginning", on_click=backbeginning_callback)
+            with backcol2:
+                st.button("< Back one example", on_click=backprevious_callback)
             st.title("Thank you!")
             st.balloons()
             st.success("You have annotated all the examples! 🎉")
