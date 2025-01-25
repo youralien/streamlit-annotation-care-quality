@@ -135,7 +135,15 @@ def update_bad_areas():
         global_dict[key] = st.session_state[key]
         update_global_dict([key], dump=True)
 
+def update_should_have_used():
+    example_ind = global_dict["current_example_ind"]
+    key = f"badareas_should_have_used_{example_ind}"
+    if key in st.session_state:  # Only update if there's actually a selection
+        global_dict[key] = st.session_state[key]
+        update_global_dict([key], dump=True)
+
 def update_bad_areas_reason():
+    """DEPRECATED, NOT USING THIS FUNCTINO OR UI"""
     example_ind = global_dict["current_example_ind"]
 
     # Get all the detail keys for the current example's bad areas
@@ -283,34 +291,39 @@ if __name__ == "__main__":
                     """, unsafe_allow_html=True)
 
                     skill_options = ["Reflections", "Validation", "Empathy", "Questions", "Suggestions", "Self-disclosure", "Session Management", "Professionalism"]
-                    st.subheader("For the response, select the :green[strengths]")
+                    st.subheader("Which skill(s) :blue[were used] and show :green[strengths]")
                     selected_strengths = st.multiselect(
-                        "Select strengths:", options=skill_options, key=f"strengths_{example_ind}", on_change=update_strengths
+                        "Select :green[strengths]:", options=skill_options, key=f"strengths_{example_ind}", on_change=update_strengths
                     )
 
-                    st.subheader("For the response, select the :red[bad areas]")
+                    st.subheader("Which skill(s) :blue[were used], but have :red[areas for improvement]")
                     selected_bad_areas = st.multiselect(
-                        "Select bad areas:", options=skill_options, key=f"badareas_{example_ind}", on_change=update_bad_areas
+                        "Select :red[areas for improvement]:", options=skill_options, key=f"badareas_{example_ind}", on_change=update_bad_areas
                     )
 
-                    st.subheader("Provide more details for selected bad areas")
-                    options_per_area = {
-                        "Reflections": ["Reflections should have been used here, but weren't", "Reflections were used, but could have been done better", "Reflections were not appropriate here"],
-                        "Validation": ["Validation should have been used here, but wasn't", "Validation was used, but could have been done better", "Validation was not appropriate here"],
-                        "Questions": ["Questions should have been used here, but weren't", "Questions were used, but could have been phrased better", "Questions were not appropriate here"],
-                        "Empathy": ["Empathy should have been used here, but wasn't", "Empathy was used, but could have been done better", "Empathy was not appropriate here"],
-                        "Suggestions": ["Suggestions should have been used here, but weren't", "Suggestions were used, but could have been done better", "Suggestions were not appropriate here"],
-                        "Self-disclosure": ["Self-disclosure should have been used here, but wasn't", "Self-disclosure was used, but could have been done better", "Self-disclosure was not appropriate here"],
-                        "Session Management": ["Session Management should have been used here, but wasn't", "Session Management was used, but could have been done better", "Session Management was not appropriate here"],
-                        "Professionalism": ["Professional Tone should have been used here, but wasn't", "Professional Tone was used, but could have been done better", "Professional Tone was not appropriate here"]
-                    }
-                    for area in selected_bad_areas:
-                        detail_key = f"detail_{example_ind}_{area}"
-                        st.radio(f"Select the reason for {area} being a bad area:",
-                            options=["Reason NOT YET selected (choose from below)"] + options_per_area[area],
-                            key=detail_key,
-                            on_change=update_bad_areas_reason
-                            )
+                    st.subheader("Which skill(s) :orange[were not used], but :red[should have been used] here?")
+                    selected_should_have_used = st.multiselect(
+                        "Select :red[should have been used]:", options=skill_options, key=f"badareas_should_have_used_{example_ind}", on_change=update_should_have_used
+                    )
+
+                    # st.subheader("Provide more details for selected bad areas")
+                    # options_per_area = {
+                    #     "Reflections": ["Reflections should have been used here, but weren't", "Reflections were used, but could have been done better", "Reflections were not appropriate here"],
+                    #     "Validation": ["Validation should have been used here, but wasn't", "Validation was used, but could have been done better", "Validation was not appropriate here"],
+                    #     "Questions": ["Questions should have been used here, but weren't", "Questions were used, but could have been phrased better", "Questions were not appropriate here"],
+                    #     "Empathy": ["Empathy should have been used here, but wasn't", "Empathy was used, but could have been done better", "Empathy was not appropriate here"],
+                    #     "Suggestions": ["Suggestions should have been used here, but weren't", "Suggestions were used, but could have been done better", "Suggestions were not appropriate here"],
+                    #     "Self-disclosure": ["Self-disclosure should have been used here, but wasn't", "Self-disclosure was used, but could have been done better", "Self-disclosure was not appropriate here"],
+                    #     "Session Management": ["Session Management should have been used here, but wasn't", "Session Management was used, but could have been done better", "Session Management was not appropriate here"],
+                    #     "Professionalism": ["Professional Tone should have been used here, but wasn't", "Professional Tone was used, but could have been done better", "Professional Tone was not appropriate here"]
+                    # }
+                    # for area in selected_bad_areas:
+                    #     detail_key = f"detail_{example_ind}_{area}"
+                    #     st.radio(f"Select the reason for {area} being a bad area:",
+                    #         options=["Reason NOT YET selected (choose from below)"] + options_per_area[area],
+                    #         key=detail_key,
+                    #         on_change=update_bad_areas_reason
+                    #         )
                     st.checkbox('I have finished annotating', key=f"finished_{example_ind}", on_change=update_global_dict, args=[[f"finished_{example_ind}"]])
 
                     if f"finished_{example_ind}" in st.session_state and st.session_state[f"finished_{example_ind}"]:
